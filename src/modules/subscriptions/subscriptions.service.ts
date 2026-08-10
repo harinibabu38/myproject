@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
 import { UsersService } from '../users/users.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -61,5 +61,19 @@ export class SubscriptionsService {
 
   async getUserSubscriptions(userId: string): Promise<Subscription[]> {
     return this.subscriptionRepository.find({ where: { userId } });
+  }
+
+  async findExpiringSubscriptions(daysAhead: number = 7): Promise<Subscription[]> {
+    const now = new Date();
+    const targetDate = new Date();
+    targetDate.setDate(now.getDate() + daysAhead);
+
+    return this.subscriptionRepository.find({
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: Between(now, targetDate),
+      },
+      relations: { user: true },
+    });
   }
 }

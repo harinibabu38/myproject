@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
+import { SubscriptionSchedulerService } from './subscription-scheduler.service';
 
 export class CreateCheckoutDto {
   email!: string;
@@ -10,7 +11,10 @@ export class CreateCheckoutDto {
 
 @Controller('subscriptions')
 export class SubscriptionsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly subscriptionSchedulerService: SubscriptionSchedulerService,
+  ) {}
 
   @Post('checkout')
   async createCheckout(@Body() dto: CreateCheckoutDto) {
@@ -25,5 +29,11 @@ export class SubscriptionsController {
   @Get('user/:userId')
   async getUserSubscriptions(@Param('userId') userId: string) {
     return this.subscriptionsService.getUserSubscriptions(userId);
+  }
+
+  @Post('trigger-renewal-check')
+  async triggerRenewalCheck(@Query('days') days?: string) {
+    const daysAhead = days ? parseInt(days, 10) : 7;
+    return this.subscriptionSchedulerService.checkExpiringSubscriptions(daysAhead);
   }
 }
