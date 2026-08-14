@@ -1,98 +1,315 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AI-Enabled SaaS Subscription & Analytics Platform
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A robust, enterprise-grade backend service for a SaaS platform built with **NestJS**, **PostgreSQL**, **Redis**, **BullMQ**, **Stripe (Test Mode)**, and the **Model Context Protocol (MCP)**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🌟 Key Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+1. **💳 Subscription Checkout & Webhook Handling**:
+   - Seamless Stripe Test Mode checkout sessions.
+   - Idempotent Stripe webhook receiver (`invoice.payment_succeeded`, `customer.subscription.updated`, `customer.subscription.deleted`).
+   - Transactional PostgreSQL persistence for Users, Subscriptions, and Invoices.
 
-## Project setup
+2. **📄 Automated PDF Invoicing & Storage**:
+   - Dynamic programmatic PDF invoice generation using **PDFKit**.
+   - Structured local document storage (`uploads/invoices/`) with download endpoints.
 
-```bash
-$ npm install
+3. **✉️ Transactional Email Delivery**:
+   - Automated welcome and payment confirmation emails with invoice download links.
+   - Integrated with **Mailtrap** SMTP sandbox for safe testing without real emails.
+
+4. **⏰ Subscription Lifecycle & BullMQ Background Processing**:
+   - Scheduled Cron job (`@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)`) scanning for expiring subscriptions.
+   - Non-blocking asynchronous job queuing powered by **BullMQ** & **Redis** to dispatch renewal reminders.
+
+5. **⚡ Redis Caching & Platform Metrics**:
+   - High-performance caching layer for active subscriber counts and simulated revenue totals.
+   - Configurable TTL (60s) with automatic and manual cache invalidation (`DELETE /metrics/cache`).
+
+6. **🤖 Model Context Protocol (MCP) AI Integration**:
+   - Standalone MCP server exposing platform metrics tools over `stdio` transport.
+   - Direct integration ready for **Claude Desktop**, MCP Inspector, or custom AI agents.
+   - REST MCP bridge for browser and API-based AI interactions.
+
+7. **🐳 Zero-Friction Docker Infrastructure**:
+   - Complete `docker-compose.yml` configuration to spin up PostgreSQL, Redis, and the backend application with healthchecks.
+
+---
+
+## 🏗️ Architecture & Component Diagram
+
+```
++-----------------------------------------------------------------------------------+
+|                                  Client / Frontend                                |
++-----------------------------------------------------------------------------------+
+       |                                      |                               |
+       | POST /subscriptions/checkout         | Stripe Webhook Event          | AI Query
+       v                                      v                               v
++------------------+                  +------------------+            +-------------+
+| Subscriptions    |                  | Webhooks Module  |            | MCP Server  |
+| Module           |                  | (Stripe Verified)|            | (stdio/api) |
++------------------+                  +------------------+            +-------------+
+       |                                      |                              |
+       | Stripe Checkout                      +------------+                 | Reads
+       v                                      |            |                 v
++------------------+                          v            v          +-------------+
+| Stripe API       |                  +------------+ +------------+   | Metrics     |
+| (Test Mode)      |                  | Invoices   | | Mail       |   | Service     |
++------------------+                  | (PDFKit)   | | (Mailtrap) |   +-------------+
+                                      +------------+ +------------+          |
+                                            |              |                 |
++-------------------------------------------+--------------+                 v
+|                                                                     +-------------+
+|   PostgreSQL 16 (Relational DB) <---------------------------------- | Redis 7     |
+|   (Users, Subscriptions, Invoices)                                  | (Cache &    |
+|                                                                     |  BullMQ)    |
++---------------------------------------------------------------------+-------------+
 ```
 
-## Compile and run the project
+---
 
+## 📋 Prerequisites
+
+- **Node.js**: `v20.x` or higher
+- **Docker & Docker Compose** (Recommended) or local instances of **PostgreSQL** (v15+) and **Redis** (v7+)
+- **Stripe Account** (Free test mode API keys from [stripe.com](https://stripe.com))
+- **Mailtrap Account** (Free sandbox credentials from [mailtrap.io](https://mailtrap.io))
+
+---
+
+## ⚙️ Environment Configuration
+
+Copy the example environment file:
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+Edit `.env` with your credentials:
 
-```bash
-# unit tests
-$ npm run test
+```env
+# Application
+PORT=3000
+NODE_ENV=development
 
-# e2e tests
-$ npm run test:e2e
+# Database (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=ai_saas_platform
+DB_SYNCHRONIZE=true
 
-# test coverage
-$ npm run test:cov
+# Redis (Cache & BullMQ)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# Stripe (Test Mode)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Mailtrap / SMTP Sandbox
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=your_mailtrap_user
+SMTP_PASS=your_mailtrap_password
+SMTP_FROM="AI SaaS <noreply@aisaassample.com>"
+
+# Optional OpenAI API Key
+OPENAI_API_KEY=sk-...
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 🚀 Quick Start Guide
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Option 1: Full Docker Compose Setup (Zero Friction)
+
+To start PostgreSQL, Redis, and the NestJS backend together:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose up -d --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- Backend API: `http://localhost:3000`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
 
-## Resources
+### Option 2: Local Development Setup
 
-Check out a few resources that may come in handy when working with NestJS:
+1. **Start PostgreSQL and Redis via Docker**:
+   ```bash
+   docker compose up -d postgres redis
+   ```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
 
-## Support
+3. **Run in Development Mode**:
+   ```bash
+   npm run start:dev
+   ```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+4. **Run Unit & E2E Tests**:
+   ```bash
+   npm run test
+   npm run test:e2e
+   ```
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 💳 Stripe Webhook Testing Guide
 
-## License
+To test the payment lifecycle and webhook synchronization:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+1. **Install Stripe CLI**:
+   ```bash
+   # Linux (Debian/Ubuntu)
+   curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/stripe.gpg
+   echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
+   sudo apt-get update && sudo apt-get install stripe
+   ```
+
+2. **Forward Webhooks to Local Server**:
+   ```bash
+   stripe login
+   stripe listen --forward-to localhost:3000/webhooks/stripe
+   ```
+   *Copy the displayed webhook signing secret (starts with `whsec_...`) and update `STRIPE_WEBHOOK_SECRET` in your `.env`.*
+
+3. **Simulate a Payment Event**:
+   ```bash
+   stripe trigger invoice.payment_succeeded
+   ```
+   *Upon execution, the backend will automatically create/update the user, persist the subscription, generate a PDF invoice in `uploads/invoices/`, and send a Mailtrap confirmation email.*
+
+---
+
+## ✉️ Email Testing (Mailtrap Sandbox)
+
+1. Sign up at [Mailtrap](https://mailtrap.io) and create an **Email Testing** sandbox inbox.
+2. Copy your SMTP Host, Port, Username, and Password into `.env`.
+3. When webhooks succeed or renewal reminders trigger, inspect your Mailtrap inbox to view the delivered HTML email with the invoice access link.
+
+---
+
+## ⏰ Background Renewal Queue (BullMQ & Cron)
+
+- **Automated Schedule**: Every midnight, `@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)` runs `SubscriptionSchedulerService.handleDailyRenewalCheck()`.
+- **Manual Trigger**: You can trigger the renewal scanning job on demand:
+  ```bash
+  curl -X POST "http://localhost:3000/subscriptions/trigger-renewal-check?days=7"
+  ```
+- **Worker**: `RenewalReminderProcessor` consumes jobs from the `renewal-reminder` Redis queue and sends reminder emails asynchronously.
+
+---
+
+## 🤖 Model Context Protocol (MCP) Setup & AI Client Integration
+
+This platform includes a dedicated **MCP Server** exposing system metrics to AI assistants like **Claude Desktop** or the **MCP Inspector**.
+
+### MCP Tools Available
+
+| Tool Name | Parameters | Description |
+|---|---|---|
+| `get_active_subscribers` | `bypassCache` (bool, optional) | Returns count of active subscribers |
+| `get_simulated_revenue` | `bypassCache` (bool, optional) | Returns total revenue and paid invoice count |
+| `get_platform_metrics` | `bypassCache` (bool, optional) | Returns full platform metrics dashboard |
+
+### 1. Running the MCP Server directly via Stdio
+```bash
+npm run start:mcp
+```
+
+### 2. Connecting to Claude Desktop
+Add the following configuration to your `claude_desktop_config.json` (located at `~/.config/Claude/claude_desktop_config.json` on Linux or `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "ai-saas-platform": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "ts-node",
+        "/absolute/path/to/ai-saas-platform/src/mcp-server.ts"
+      ],
+      "env": {
+        "DB_HOST": "localhost",
+        "DB_PORT": "5432",
+        "DB_USERNAME": "postgres",
+        "DB_PASSWORD": "postgres",
+        "DB_NAME": "ai_saas_platform",
+        "REDIS_HOST": "localhost",
+        "REDIS_PORT": "6379"
+      }
+    }
+  }
+}
+```
+
+### 3. Testing with MCP Inspector
+```bash
+npx @modelcontextprotocol/inspector ts-node src/mcp-server.ts
+```
+
+---
+
+## 📡 REST API Reference
+
+### Subscriptions
+- `POST /subscriptions/checkout` — Initiate Stripe checkout session.
+  ```json
+  {
+    "email": "customer@example.com",
+    "priceId": "price_1N...",
+    "successUrl": "https://myapp.com/success",
+    "cancelUrl": "https://myapp.com/cancel"
+  }
+  ```
+- `GET /subscriptions/user/:userId` — Retrieve subscriptions for a user.
+- `POST /subscriptions/trigger-renewal-check?days=7` — Trigger renewal queue scan.
+
+### Webhooks
+- `POST /webhooks/stripe` — Stripe signature-verified webhook handler.
+
+### Invoices
+- `GET /invoices/user/:userId` — List all invoices for a user.
+- `GET /invoices/:id` — Get invoice details by ID.
+- `GET /invoices/:id/download` — Download the generated PDF invoice file.
+
+### Metrics & Caching
+- `GET /metrics?bypassCache=true` — Get complete platform metrics.
+- `GET /metrics/active-subscribers` — Get active subscriber count.
+- `GET /metrics/revenue` — Get revenue summary.
+- `DELETE /metrics/cache` — Invalidate cached platform metrics in Redis.
+
+### MCP & AI
+- `GET /mcp/info` — MCP server metadata and capabilities.
+- `GET /mcp/tools` — List registered MCP tools.
+- `POST /mcp/tools/call` — Execute an MCP tool via HTTP (`{ "name": "get_platform_metrics", "args": {} }`).
+- `POST /ai/chat` — Query AI assistant with context access (`{ "message": "What is our revenue?" }`).
+
+---
+
+## 🧪 Testing
+
+```bash
+# Unit tests
+npm run test
+
+# End-to-end tests
+npm run test:e2e
+
+# Build check
+npm run build
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
